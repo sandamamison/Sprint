@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import annotation.WebApi;
 import annotation.Controller;
 import annotation.GetMapping;
 import annotation.PostMapping;
@@ -68,9 +69,10 @@ public class FinderAnnotation {
         List<Class<?>> listControleurs = new ArrayList<>();
         // verifier si la classe possede l'annotation @Controller
         for (Class<?> class1 : listClasses) {
-            if (class1.isAnnotationPresent(Controller.class)) {
+            if (class1.isAnnotationPresent(Controller.class) || class1.isAnnotationPresent(WebApi.class)) {
                 listControleurs.add(class1);
             }
+            
         }
         return listControleurs;
     }

@@ -15,7 +15,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import util.MethodExecutor;
 import util.ModelAndView;
+import util.JsonConverter;
 import util.UrlMethod;
+import annotation.WebApi;
 
 public class ProcessRequest extends HttpServlet {
 
@@ -36,11 +38,13 @@ public class ProcessRequest extends HttpServlet {
             throws ServletException, IOException {
 
         String url = req.getRequestURI();
-        String[] uri = url.split("/");
-        String output = uri[uri.length - 1];
+        String route = url.substring(req.getContextPath().length());
+        if (route.isEmpty()) {
+            route = "/";
+        }
 
-        if (output.endsWith(".html")) {
-            String cheminPhysique = getServletContext().getRealPath("/" + output);
+        if (route.endsWith(".html")) {
+            String cheminPhysique = getServletContext().getRealPath(route);
             File fichier = new File(cheminPhysique);
 
             if (fichier.exists()) {
@@ -54,7 +58,7 @@ public class ProcessRequest extends HttpServlet {
         }
 
         String httpMethod = req.getMethod();
-        UrlMethod cle = new UrlMethod("/" + output, httpMethod);
+        UrlMethod cle = new UrlMethod(route, httpMethod);
 
         Method method = (urlMap != null) ? urlMap.get(cle) : null;
 
@@ -91,12 +95,20 @@ public class ProcessRequest extends HttpServlet {
                 return;
             }
 
-            res.setContentType("text/plain;charset=UTF-8");
-            PrintWriter out = res.getWriter();
-            out.println("URL     : " + url);
-            out.println("Methode : " + method.getName() + "()");
-            out.println("Execution de :" + method);
-            out.println("Resultat : " + obj);
+            boolean isWebApi = method.getDeclaringClass().isAnnotationPresent(WebApi.class);
+
+            if (isWebApi) {
+                res.setContentType("application/json;charset=UTF-8");
+                PrintWriter out = res.getWriter();
+                out.println(JsonConverter.toJson(obj));
+            } else {
+                res.setContentType("text/plain;charset=UTF-8");
+                PrintWriter out = res.getWriter();
+                out.println("URL     : " + url);
+                out.println("Methode : " + method.getName() + "()");
+                out.println("Execution de :" + method);
+                out.println("Resultat : " + obj);
+            }
 
         } catch (Exception e) {
             res.setContentType("text/plain;charset=UTF-8");
