@@ -102,7 +102,7 @@ public class ProcessRequest extends HttpServlet {
             if (isWebApi) {
                 res.setContentType("application/json;charset=UTF-8");
                 PrintWriter out = res.getWriter();
-                out.println(JsonConverter.toJson(obj));
+                out.println(obj instanceof String ? obj : JsonConverter.toJson(obj));
             } else {
                 res.setContentType("text/plain;charset=UTF-8");
                 PrintWriter out = res.getWriter();

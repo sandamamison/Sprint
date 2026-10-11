@@ -1,6 +1,16 @@
 package util;
 
 import annotation.RequestParam;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import model.FileUpload;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
@@ -20,24 +30,26 @@ public class MethodExecutor {
         if (method == null) {
             throw new IllegalArgumentException("La methode ne peut pas etre null");
         }
-        Class<?> classController = method.getDeclaringClass();
-        Object controller = classController.getDeclaredConstructor().newInstance();
+
+        Object controller = method.getDeclaringClass().getDeclaredConstructor().newInstance();
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
-        for (int i = 0; i < parameters.length; i++) {
-            Class<?> parameterType = parameters[i].getType();
-            String parameterName = getParameterName(parameters[i]);
+        for (int index = 0; index < parameters.length; index++) {
+            Parameter parameter = parameters[index];
+            Class<?> parameterType = parameter.getType();
+            String parameterName = getParameterName(parameter);
+
             if (parameterType.equals(HttpServletRequest.class)) {
-                arguments[i] = request;
+                arguments[index] = request;
             } else if (parameterType.equals(HttpServletResponse.class)) {
-                arguments[i] = response;
+                arguments[index] = response;
             } else if (parameterType.equals(FileUpload.class)) {
-                arguments[i] = extractFileUpload(parameterName, request);
+                arguments[index] = extractFileUpload(parameterName, request);
             } else if (isSimpleType(parameterType)) {
-                arguments[i] = extractSimpleValue(parameterName, parameterType, request);
+                arguments[index] = extractSimpleValue(parameterName, parameterType, request);
             } else {
-                arguments[i] = bindObject(parameterType, request);
+                arguments[index] = bindObject(parameterType, request);
             }
         }
 
@@ -63,6 +75,9 @@ public class MethodExecutor {
     }
 
     private static Object extractSimpleValue(String name, Class<?> type, HttpServletRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Une requete est necessaire pour le parametre: " + name);
+        }
         String value = request.getParameter(name);
         if (value == null) {
             if (type.isPrimitive()) {
@@ -80,12 +95,15 @@ public class MethodExecutor {
             if (type.equals(Short.class) || type.equals(short.class)) return Short.valueOf(value);
             if (type.equals(Byte.class) || type.equals(byte.class)) return Byte.valueOf(value);
             if (type.equals(Character.class) || type.equals(char.class)) {
-                if (value.length() != 1) throw new IllegalArgumentException();
+                if (value.length() != 1) {
+                    throw new IllegalArgumentException();
+                }
                 return value.charAt(0);
             }
             return Enum.valueOf(type.asSubclass(Enum.class), value);
         } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("Invalid parameter '" + name + "' for type " + type.getSimpleName(), exception);
+            throw new IllegalArgumentException(
+                    "Invalid parameter '" + name + "' for type " + type.getSimpleName(), exception);
         }
     }
 
@@ -98,6 +116,7 @@ public class MethodExecutor {
         if (part == null || part.getSubmittedFileName() == null || part.getSubmittedFileName().isEmpty()) {
             return null;
         }
+
         try (InputStream input = part.getInputStream();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[8192];
@@ -111,14 +130,24 @@ public class MethodExecutor {
 
     private static Object bindObject(Class<?> type, HttpServletRequest request) throws Exception {
         Object result = type.getDeclaredConstructor().newInstance();
-        for (Field field : type.getDeclaredFields()) {
-            field.setAccessible(true);
-            if (field.getType().equals(FileUpload.class)) {
-                FileUpload file = extractFileUpload(field.getName(), request);
-                if (file != null) field.set(result, file);
-            } else if (isSimpleType(field.getType())) {
-                Object value = extractSimpleValue(field.getName(), field.getType(), request);
-                if (value != null) field.set(result, value);
+        for (Class<?> currentType = type; currentType != null; currentType = currentType.getSuperclass()) {
+            for (Field field : currentType.getDeclaredFields()) {
+                int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers) || field.isSynthetic()) {
+                    continue;
+                }
+                field.setAccessible(true);
+                if (field.getType().equals(FileUpload.class)) {
+                    FileUpload file = extractFileUpload(field.getName(), request);
+                    if (file != null) {
+                        field.set(result, file);
+                    }
+                } else if (isSimpleType(field.getType())) {
+                    Object value = extractSimpleValue(field.getName(), field.getType(), request);
+                    if (value != null) {
+                        field.set(result, value);
+                    }
+                }
             }
         }
         return result;
