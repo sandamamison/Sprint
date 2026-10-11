@@ -20,7 +20,7 @@ public class AppInitializer implements ServletContextListener {
         ServletContext context = sce.getServletContext();
 
         String packageController = context.getInitParameter("controleurPackage");
-        if (packageController == null || packageController.isBlank()) {
+        if (packageController == null || packageController.trim().isEmpty()) {
             System.out.println("[MonFramework] Erreur : le context-param 'controleurPackage' est manquant dans le web.xml");
         } else {
             try {

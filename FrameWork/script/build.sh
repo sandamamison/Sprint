@@ -12,7 +12,7 @@ mkdir -p "$BIN_DIR"
 mkdir -p "$DIST_DIR"
 
 echo "-> Compilation des sources Java..."
-javac -cp "$LIB_JAR" -d "$BIN_DIR" $(find "$SRC_DIR" -name "*.java")
+javac -parameters -cp "$LIB_JAR" -d "$BIN_DIR" $(find "$SRC_DIR" -name "*.java")
 
 if [ $? -ne 0 ]; then
     echo "[Erreur] La compilation a échoué."

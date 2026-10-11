@@ -13,7 +13,7 @@ public class UrlMethod {
 
     public UrlMethod(String url, String method) {
         this.url = url;
-        this.method = (method == null || method.isBlank()) ? "GET" : method.trim().toUpperCase();
+        this.method = (method == null || method.trim().isEmpty()) ? "GET" : method.trim().toUpperCase();
     }
 
     public UrlMethod(UrlMapping annotation) {
