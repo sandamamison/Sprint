@@ -12,6 +12,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.MultipartConfig;
 
 import util.MethodExecutor;
 import util.ModelAndView;
@@ -19,6 +20,7 @@ import util.JsonConverter;
 import util.UrlMethod;
 import annotation.WebApi;
 
+@MultipartConfig
 public class ProcessRequest extends HttpServlet {
 
     private HashMap<UrlMethod, Method> urlMap;
@@ -80,7 +82,7 @@ public class ProcessRequest extends HttpServlet {
         }
 
         try {
-            Object obj = MethodExecutor.execute(method);
+            Object obj = MethodExecutor.execute(method, req, res);
 
             if (obj instanceof ModelAndView) {
                 ModelAndView mv = (ModelAndView) obj;

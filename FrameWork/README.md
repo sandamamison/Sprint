@@ -84,7 +84,7 @@ public class HomeController {
 Les contrôleurs doivent actuellement respecter ces règles :
 
 - posséder un constructeur sans argument ;
-- utiliser des méthodes sans paramètres ;
+- utiliser des méthodes sans paramètres, ou recevoir `HttpServletRequest` et/ou `HttpServletResponse` ;
 - annoter chaque méthode exposée avec un mapping ;
 - ne pas déclarer deux fois le même couple URL/méthode HTTP.
 
@@ -217,6 +217,59 @@ public String status() {
 }
 ```
 
+### Binding simple d'un formulaire
+
+Une méthode de contrôleur peut recevoir directement la requête HTTP. Le framework injecte
+`HttpServletRequest` et `HttpServletResponse` selon le type des paramètres, puis la méthode
+peut lire les champs du formulaire avec `getParameter` :
+
+```java
+@GetMapping(url = "/form")
+public ModelAndView form() {
+	return new ModelAndView("form");
+}
+
+@PostMapping(url = "/form")
+public ModelAndView submit(HttpServletRequest request) {
+	String name = request.getParameter("name");
+	String error = (name == null || name.isBlank())
+			? "Le nom est obligatoire."
+			: "";
+
+	ModelAndView result = new ModelAndView("form");
+	result.addObject("name", name == null ? "" : name);
+	result.addObject("error", error);
+	return result;
+}
+```
+
+La route GET affiche le formulaire et la route POST récupère les valeurs, effectue les
+vérifications nécessaires, puis retourne la même vue avec `ModelAndView`. Les méthodes sans
+paramètre restent compatibles. Le framework prend aussi en charge les types simples
+(`String`, nombres, booléens, caractères et énumérations), les objets DTO et les fichiers
+multipart avec `model.FileUpload`. Pour un DTO, les champs sont associés aux paramètres
+portant le même nom. L'annotation `@RequestParam("nom")` permet de choisir explicitement
+le nom d'un paramètre.
+
+Exemple de binding d'un DTO avec fichier :
+
+```java
+public class User {
+	private String nom;
+	private FileUpload photo;
+}
+
+@PostMapping(url = "/users")
+public String save(User user) {
+	return user.getNom();
+}
+```
+
+Le formulaire doit utiliser `enctype="multipart/form-data"` pour envoyer un fichier.
+`ProcessRequest` est configuré avec `@MultipartConfig`. Le script de compilation utilise
+également `-parameters`, nécessaire pour récupérer les noms des paramètres Java lorsque
+`@RequestParam` n'est pas utilisé.
+
 ### `ModelAndView`
 
 `ModelAndView` contient :
@@ -342,7 +395,6 @@ Cette classe n'est pas utilisée par `AppInitializer`. Le mécanisme actif est `
 
 ## Limites actuelles
 
-- Les méthodes de contrôleur ne reçoivent pas encore `HttpServletRequest` ou `HttpServletResponse`.
 - Les paramètres de formulaire et les paramètres d'URL ne sont pas injectés.
 - Les routes dynamiques comme `/users/{id}` ne sont pas prises en charge.
 - La résolution utilise le dernier segment de l'URI au lieu de l'URI complète.
