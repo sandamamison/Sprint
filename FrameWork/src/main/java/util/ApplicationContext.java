@@ -13,20 +13,21 @@ public class ApplicationContext {
         System.out.println("[MonFramework] Initialisation des composants...");
 
         try {
-            Class.forName("org.postgresql.Driver"); 
+            Class.forName("com.mysql.cj.jdbc.Driver");
 
-            String url = "jdbc:postgresql://localhost:5432/ma_base";
-            String user = "postgres";
-            String password = "password";
+            String url = "jdbc:mysql://127.0.0.1:3306/notes"
+                    + "?useSSL=false&serverTimezone=UTC";
+            String user = "root";
+            String password = "112345677";
             Connection connection = DriverManager.getConnection(url, user, password);
 
             registry.put("databaseConnection", connection);
-            System.out.println("[MonFramework] Connexion BDD établie et enregistrée !");
+            System.out.println("[MonFramework] Connexion MySQL etablie et enregistree !");
 
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Pilote JDBC introuvable !", e);
+            throw new RuntimeException("Pilote JDBC MySQL introuvable !", e);
         } catch (SQLException e) {
-            throw new RuntimeException("Impossible de se connecter à la base de données !", e);
+            throw new RuntimeException("Impossible de se connecter a MySQL !", e);
         }
     }
 
