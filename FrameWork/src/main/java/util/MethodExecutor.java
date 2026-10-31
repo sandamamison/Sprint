@@ -3,6 +3,7 @@ package util;
 import annotation.RequestParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import model.FileUpload;
 
 import java.io.ByteArrayOutputStream;
@@ -11,14 +12,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.lang.reflect.Method;
-import java.lang.reflect.Field;
-import java.lang.reflect.Parameter;
-import model.FileUpload;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 public class MethodExecutor {
     public static Object execute(Method method) throws Exception {
@@ -44,6 +37,11 @@ public class MethodExecutor {
                 arguments[index] = request;
             } else if (parameterType.equals(HttpServletResponse.class)) {
                 arguments[index] = response;
+            } else if (parameterType.equals(HttpSession.class)) {
+                if (request == null) {
+                    throw new IllegalArgumentException("Une requete est necessaire pour injecter HttpSession");
+                }
+                arguments[index] = request.getSession();
             } else if (parameterType.equals(FileUpload.class)) {
                 arguments[index] = extractFileUpload(parameterName, request);
             } else if (isSimpleType(parameterType)) {
