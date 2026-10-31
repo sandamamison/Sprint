@@ -1,5 +1,6 @@
 package util;
 
+import annotation.Auth;
 import annotation.RequestParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,6 +24,8 @@ public class MethodExecutor {
         if (method == null) {
             throw new IllegalArgumentException("La methode ne peut pas etre null");
         }
+
+        checkAuthorization(method, request);
 
         Object controller = method.getDeclaringClass().getDeclaredConstructor().newInstance();
         Parameter[] parameters = method.getParameters();
@@ -149,5 +152,68 @@ public class MethodExecutor {
             }
         }
         return result;
+    }
+
+    private static void checkAuthorization(Method method, HttpServletRequest request) {
+        Auth auth = method.getAnnotation(Auth.class);
+        if (auth == null) {
+            auth = method.getDeclaringClass().getAnnotation(Auth.class);
+        }
+        if (auth == null) {
+            return;
+        }
+
+        if (request == null) {
+            throw new SecurityException("Acces refuse : requete manquante pour verifier l'authentification");
+        }
+
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            throw new SecurityException("Acces refuse : vous devez etre connecte pour acceder a cette ressource");
+        }
+
+        String sessionUserKey = null;
+        try {
+            if (request.getServletContext() != null) {
+                sessionUserKey = request.getServletContext().getInitParameter("auth-session-key");
+            }
+        } catch (Throwable ignored) {
+        }
+
+        Object user = getSessionUser(session, sessionUserKey);
+        if (user == null) {
+            throw new SecurityException("Acces refuse : vous devez etre connecte pour acceder a cette ressource");
+        }
+    }
+
+    private static Object getSessionUser(HttpSession session, String customKey) {
+        if (customKey != null && !customKey.trim().isEmpty()) {
+            Object val = session.getAttribute(customKey.trim());
+            if (isValidUser(val)) {
+                return val;
+            }
+        }
+        String[] defaultKeys = {"user", "username", "auth", "profile", "connectedUser", "login"};
+        for (String key : defaultKeys) {
+            Object val = session.getAttribute(key);
+            if (isValidUser(val)) {
+                return val;
+            }
+        }
+        Object isConnected = session.getAttribute("isConnected");
+        if (Boolean.TRUE.equals(isConnected)) {
+            return Boolean.TRUE;
+        }
+        return null;
+    }
+
+    private static boolean isValidUser(Object val) {
+        if (val == null) {
+            return false;
+        }
+        if (val instanceof String) {
+            return !((String) val).trim().isEmpty();
+        }
+        return true;
     }
 }
