@@ -13,8 +13,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MethodExecutor {
     public static Object execute(Method method) throws Exception {
@@ -175,11 +173,9 @@ public class MethodExecutor {
         }
 
         String sessionUserKey = null;
-        String sessionRoleKey = null;
         try {
             if (request.getServletContext() != null) {
                 sessionUserKey = request.getServletContext().getInitParameter("auth-session-key");
-                sessionRoleKey = request.getServletContext().getInitParameter("auth-role-key");
             }
         } catch (Throwable ignored) {
         }
@@ -187,14 +183,6 @@ public class MethodExecutor {
         Object user = getSessionUser(session, sessionUserKey);
         if (user == null) {
             throw new SecurityException("Acces refuse : vous devez etre connecte pour acceder a cette ressource");
-        }
-
-        List<String> requiredRoles = getRequiredRoles(auth);
-        if (!requiredRoles.isEmpty()) {
-            String role = getSessionRole(session, user, sessionRoleKey);
-            if (role == null || !hasRole(role, requiredRoles)) {
-                throw new SecurityException("Acces refuse : permissions insuffisantes (role requis : " + requiredRoles + ")");
-            }
         }
     }
 
@@ -227,68 +215,5 @@ public class MethodExecutor {
             return !((String) val).trim().isEmpty();
         }
         return true;
-    }
-
-    private static List<String> getRequiredRoles(Auth auth) {
-        List<String> roles = new ArrayList<>();
-        if (auth.value() != null) {
-            for (String r : auth.value()) {
-                if (r != null && !r.trim().isEmpty()) {
-                    roles.add(r.trim());
-                }
-            }
-        }
-        if (auth.role() != null) {
-            for (String r : auth.role()) {
-                if (r != null && !r.trim().isEmpty()) {
-                    roles.add(r.trim());
-                }
-            }
-        }
-        return roles;
-    }
-
-    private static String getSessionRole(HttpSession session, Object user, String customRoleKey) {
-        if (customRoleKey != null && !customRoleKey.trim().isEmpty()) {
-            Object val = session.getAttribute(customRoleKey.trim());
-            if (val != null) {
-                return String.valueOf(val).trim();
-            }
-        }
-        String[] defaultRoleKeys = {"role", "profile", "userRole"};
-        for (String key : defaultRoleKeys) {
-            Object val = session.getAttribute(key);
-            if (val != null) {
-                return String.valueOf(val).trim();
-            }
-        }
-        if (user != null && !(user instanceof String) && !(user instanceof Boolean)) {
-            try {
-                Method getRoleMethod = user.getClass().getMethod("getRole");
-                Object r = getRoleMethod.invoke(user);
-                if (r != null) {
-                    return String.valueOf(r).trim();
-                }
-            } catch (Exception ignored) {
-            }
-            try {
-                Method getProfileMethod = user.getClass().getMethod("getProfile");
-                Object r = getProfileMethod.invoke(user);
-                if (r != null) {
-                    return String.valueOf(r).trim();
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        return null;
-    }
-
-    private static boolean hasRole(String userRole, List<String> requiredRoles) {
-        for (String required : requiredRoles) {
-            if (userRole.equalsIgnoreCase(required)) {
-                return true;
-            }
-        }
-        return false;
     }
 }
