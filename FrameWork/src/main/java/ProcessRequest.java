@@ -112,6 +112,14 @@ public class ProcessRequest extends HttpServlet {
                 out.println("Resultat : " + obj);
             }
 
+        } catch (SecurityException e) {
+            int status = e.getMessage().contains("permissions") || e.getMessage().contains("role")
+                    ? HttpServletResponse.SC_FORBIDDEN
+                    : HttpServletResponse.SC_UNAUTHORIZED;
+            res.setStatus(status);
+            res.setContentType("text/plain;charset=UTF-8");
+            PrintWriter out = res.getWriter();
+            out.println("Acces refuse (" + status + ") : " + e.getMessage());
         } catch (Exception e) {
             res.setContentType("text/plain;charset=UTF-8");
             PrintWriter out = res.getWriter();
